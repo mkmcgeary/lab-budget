@@ -368,7 +368,7 @@ input[type=checkbox] { width: auto; accent-color: var(--accent); cursor: pointer
       <input type="password" id="login-pin" placeholder="••••" maxlength="8" inputmode="numeric">
     </div>
     <div class="login-err" id="login-err"></div>
-    <button class="btn btn-primary" style="width:100%;margin-top:16px;justify-content:center" onclick="doLogin()">Sign in</button>
+    <button class="btn btn-primary" id="signin-btn" style="width:100%;margin-top:16px;justify-content:center">Sign in</button>
   </div>
 </div>
 
@@ -685,6 +685,7 @@ async function api(params) {
 // ── Login ─────────────────────────────────────────────────────
 document.getElementById('login-pin').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 document.getElementById('login-name').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('signin-btn').addEventListener('click', doLogin);
 
 async function doLogin() {
   const name = document.getElementById('login-name').value.trim();
