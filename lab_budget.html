@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Budget Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #f5f4f0;
+  --surface:   #ffffff;
+  --surface2:  #f0ede8;
+  --border:    #ddd9d2;
+  --text:      #1a1916;
+  --text2:     #6b6760;
+  --accent:    #2d6a4f;
+  --accent-lt: #e8f4ef;
+  --warn:      #b5451b;
+  --warn-lt:   #fdf0eb;
+  --amber:     #b87333;
+  --amber-lt:  #fdf6ee;
+  --mono:      'DM Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+  --r:         8px;
+  --r-lg:      14px;
+  --shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Layout ───────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  color: var(--accent);
+}
+.logo span { color: var(--text2); font-weight: 300; }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+.user-chip {
+  font-size: 12px;
+  background: var(--accent-lt);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-weight: 500;
+}
+.admin-badge {
+  font-size: 10px;
+  font-family: var(--mono);
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 4px;
+  padding: 2px 6px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+nav {
+  display: flex;
+  gap: 2px;
+  padding: 0 2px;
+}
+.nav-btn {
+  background: none;
+  border: none;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text2);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.nav-btn:hover { background: var(--surface2); color: var(--text); }
+.nav-btn.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+
+main { flex: 1; padding: 28px 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+/* ── Views ────────────────────────────────────────────── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Cards ────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+}
+
+/* ── Stat row ─────────────────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+}
+.stat-label { font-size: 11px; font-family: var(--mono); color: var(--text2); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+.stat-value { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+.stat-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.stat-value.warn { color: var(--warn); }
+.stat-value.ok   { color: var(--accent); }
+
+/* ── Budget bar ───────────────────────────────────────── */
+.budget-bar-wrap { margin: 4px 0 2px; }
+.budget-bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.budget-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width .4s; }
+.budget-bar-fill.warn { background: var(--warn); }
+.budget-bar-fill.amber { background: var(--amber); }
+
+/* ── Toolbar ──────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.toolbar-title { font-size: 16px; font-weight: 600; flex: 1; }
+
+/* ── Buttons ──────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-ghost { background: none; border-color: var(--border); color: var(--text); }
+.btn-ghost:hover { background: var(--surface2); }
+.btn-danger { background: none; border-color: var(--border); color: var(--warn); }
+.btn-danger:hover { background: var(--warn-lt); border-color: var(--warn); }
+.btn-sm { font-size: 12px; padding: 4px 10px; }
+.btn-icon { width: 30px; height: 30px; padding: 0; justify-content: center; border: 1px solid var(--border); background: none; border-radius: var(--r); cursor: pointer; color: var(--text2); transition: all .15s; }
+.btn-icon:hover { background: var(--surface2); color: var(--text); }
+
+/* ── Inputs ───────────────────────────────────────────── */
+input, select, textarea {
+  font-family: var(--sans);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 7px 10px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+.form-row { display: grid; gap: 14px; margin-bottom: 14px; }
+.form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+label.field-label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+.field { }
+
+/* ── Table ────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text2);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.mono { font-family: var(--mono); }
+
+/* ── Status pill ──────────────────────────────────────── */
+.pill {
+  display: inline-block;
+  font-size: 11px;
+  font-family: var(--mono);
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.pill-pending    { background: var(--amber-lt); color: var(--amber); }
+.pill-reconciled { background: var(--accent-lt); color: var(--accent); }
+.pill-admin      { background: #eee; color: var(--text2); }
+
+/* ── Modal ────────────────────────────────────────────── */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(20,20,18,.45);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  padding: 28px;
+  width: 100%;
+  max-width: 540px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.16);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* ── Login ────────────────────────────────────────────── */
+#login-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+}
+.login-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 40px;
+  width: 340px;
+  box-shadow: var(--shadow);
+}
+.login-logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: .04em;
+  margin-bottom: 28px;
+}
+.login-logo span { color: var(--text2); font-weight: 300; }
+.login-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.login-err { font-size: 13px; color: var(--warn); margin-top: 12px; min-height: 18px; }
+
+/* ── Checkbox ─────────────────────────────────────────── */
+.check-cell { text-align: center; }
+input[type=checkbox] { width: auto; accent-color: var(--accent); cursor: pointer; transform: scale(1.2); }
+
+/* ── Filters ──────────────────────────────────────────── */
+.filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.filters select, .filters input { width: auto; min-width: 120px; }
+
+/* ── Empty state ──────────────────────────────────────── */
+.empty { text-align: center; padding: 48px; color: var(--text2); }
+.empty-icon { font-size: 32px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+
+/* ── Person cards (admin overview) ───────────────────── */
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.person-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.person-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
+.person-card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
+.person-name { font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+.person-meta { font-size: 12px; color: var(--text2); }
+
+/* ── Inline edit ──────────────────────────────────────── */
+.editable-field { cursor: text; }
+.editable-field:hover { background: var(--surface2); border-radius: 4px; }
+
+/* ── Toast ────────────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: var(--r);
+  padding: 10px 18px;
+  font-size: 13px;
+  z-index: 999;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .2s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── Responsive ───────────────────────────────────────── */
+@media(max-width:600px) {
+  main { padding: 16px 12px; }
+  .form-row.cols-2, .form-row.cols-3 { grid-template-columns: 1fr; }
+  header { padding: 0 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════ LOGIN -->
+<div id="login-view">
+  <div class="login-box">
+    <div class="login-logo">lab<span>/</span>budget</div>
+    <div class="login-title">Sign in</div>
+    <div class="login-sub">Enter your name and PIN</div>
+    <div class="field" style="margin-bottom:12px">
+      <label class="field-label">Name</label>
+      <input type="text" id="login-name" placeholder="Your full name" autocomplete="name">
+    </div>
+    <div class="field">
+      <label class="field-label">PIN</label>
+      <input type="password" id="login-pin" placeholder="••••" maxlength="8" inputmode="numeric">
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:16px;justify-content:center" onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ APP -->
+<div id="app" style="display:none">
+  <header>
+    <div class="logo">lab<span>/</span>budget</div>
+    <nav id="main-nav">
+      <button class="nav-btn active" onclick="showView('my-expenses')">My Expenses</button>
+      <button class="nav-btn" onclick="showView('my-reports')">Reports</button>
+    </nav>
+    <div class="header-right">
+      <span class="user-chip" id="user-chip">—</span>
+      <span class="admin-badge" id="admin-badge" style="display:none">Admin</span>
+      <button class="btn-icon" title="Sign out" onclick="signOut()">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2H13V13H9M5 10L2 7.5L5 5M2 7.5H10"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── My Expenses ─────────────────────────────────── -->
+    <div class="view active" id="view-my-expenses">
+      <div class="stats-row" id="my-stats"></div>
+      <div class="card">
+        <div class="toolbar">
+          <span class="toolbar-title">My Expenses</span>
+          <div class="filters">
+            <select id="my-year-filter" onchange="loadMyExpenses()"></select>
+            <select id="my-month-filter" onchange="loadMyExpenses()">
+              <option value="">All months</option>
+              <option value="01">Jan</option><option value="02">Feb</option>
+              <option value="03">Mar</option><option value="04">Apr</option>
+              <option value="05">May</option><option value="06">Jun</option>
+              <option value="07">Jul</option><option value="08">Aug</option>
+              <option value="09">Sep</option><option value="10">Oct</option>
+              <option value="11">Nov</option><option value="12">Dec</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="openExpenseModal()">+ Add Expense</button>
+        </div>
+        <div class="table-wrap">
+          <table id="my-table">
+            <thead><tr>
+              <th>Date</th><th>Description</th><th>Vendor</th><th>Category</th>
+              <th>Amount</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="my-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── My Reports ──────────────────────────────────── -->
+    <div class="view" id="view-my-reports">
+      <div class="toolbar" style="margin-bottom:20px">
+        <span class="toolbar-title">My Reports</span>
+        <div class="filters">
+          <select id="rep-year-filter" onchange="loadMyReport()"></select>
+        </div>
+        <button class="btn btn-ghost" onclick="exportMyCSV()">↓ Export CSV</button>
+      </div>
+      <div class="stats-row" id="rep-stats"></div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-weight:600;margin-bottom:14px;font-size:14px">By Category</div>
+        <div id="rep-by-category"></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:14px;font-size:14px">By Month</div>
+        <div id="rep-by-month"></div>
+      </div>
+    </div>
+
+    <!-- ── Admin: All Expenses ─────────────────────────── -->
+    <div class="view" id="view-admin-expenses">
+      <div class="card">
+        <div class="toolbar">
+          <span class="toolbar-title">All Expenses</span>
+          <div class="filters">
+            <select id="adm-person-filter" onchange="loadAdminExpenses()"><option value="">Everyone</option></select>
+            <select id="adm-year-filter" onchange="loadAdminExpenses()"></select>
+            <select id="adm-month-filter" onchange="loadAdminExpenses()">
+              <option value="">All months</option>
+              <option value="01">Jan</option><option value="02">Feb</option>
+              <option value="03">Mar</option><option value="04">Apr</option>
+              <option value="05">May</option><option value="06">Jun</option>
+              <option value="07">Jul</option><option value="08">Aug</option>
+              <option value="09">Sep</option><option value="10">Oct</option>
+              <option value="11">Nov</option><option value="12">Dec</option>
+            </select>
+            <select id="adm-status-filter" onchange="loadAdminExpenses()">
+              <option value="">All statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Reconciled">Reconciled</option>
+            </select>
+          </div>
+          <button class="btn btn-ghost" onclick="exportAdminCSV()">↓ Export CSV</button>
+          <button class="btn btn-primary" onclick="openExpenseModal(null, true)">+ Add Expense</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>Person</th><th>Description</th><th>Vendor</th>
+              <th>Category</th><th>Amount</th><th>Invoice ✓</th><th>Inv. Date</th><th>Notes</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="adm-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Admin: Overview ─────────────────────────────── -->
+    <div class="view" id="view-admin-overview">
+      <div class="toolbar" style="margin-bottom:20px">
+        <span class="toolbar-title">Lab Overview</span>
+        <div class="filters">
+          <select id="ov-year-filter" onchange="loadOverview()"></select>
+          <select id="ov-month-filter" onchange="loadOverview()">
+            <option value="">Full year</option>
+            <option value="01">Jan</option><option value="02">Feb</option>
+            <option value="03">Mar</option><option value="04">Apr</option>
+            <option value="05">May</option><option value="06">Jun</option>
+            <option value="07">Jul</option><option value="08">Aug</option>
+            <option value="09">Sep</option><option value="10">Oct</option>
+            <option value="11">Nov</option><option value="12">Dec</option>
+          </select>
+        </div>
+        <button class="btn btn-ghost" onclick="exportOverviewCSV()">↓ Export CSV</button>
+      </div>
+      <div class="stats-row" id="ov-stats"></div>
+      <div class="people-grid" id="ov-people"></div>
+      <div class="card" id="ov-detail" style="display:none">
+        <div class="toolbar">
+          <span class="toolbar-title" id="ov-detail-name"></span>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ov-detail').style.display='none'">Close</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Vendor</th><th>Category</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody id="ov-detail-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Admin: Settings ─────────────────────────────── -->
+    <div class="view" id="view-admin-settings">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div class="card">
+          <div class="toolbar"><span class="toolbar-title">Users</span>
+            <button class="btn btn-primary btn-sm" onclick="openUserModal()">+ Add User</button>
+          </div>
+          <div id="users-list"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="toolbar"><span class="toolbar-title">Vendors</span>
+              <button class="btn btn-ghost btn-sm" onclick="openAddVendor()">+ Add</button>
+            </div>
+            <div id="vendors-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+          </div>
+          <div class="card">
+            <div class="toolbar"><span class="toolbar-title">Categories</span>
+              <button class="btn btn-ghost btn-sm" onclick="openAddCategory()">+ Add</button>
+            </div>
+            <div id="categories-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ MODALS -->
+
+<!-- Expense modal -->
+<div class="modal-backdrop" id="expense-modal">
+  <div class="modal">
+    <div class="modal-title" id="expense-modal-title">Add Expense</div>
+    <div class="form-row cols-2">
+      <div class="field">
+        <label class="field-label">Date Purchased</label>
+        <input type="date" id="exp-date">
+      </div>
+      <div class="field" id="exp-person-field" style="display:none">
+        <label class="field-label">Person</label>
+        <select id="exp-person"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label class="field-label">Description</label>
+        <input type="text" id="exp-desc" placeholder="What was purchased?">
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field">
+        <label class="field-label">Vendor</label>
+        <select id="exp-vendor">
+          <option value="">Select vendor…</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Category</label>
+        <select id="exp-category">
+          <option value="">Select category…</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field">
+        <label class="field-label">Amount (USD)</label>
+        <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+    <!-- Admin-only fields -->
+    <div id="exp-admin-section" style="display:none">
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text2);letter-spacing:.04em;text-transform:uppercase;margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Admin Fields</div>
+      <div class="form-row cols-2">
+        <div class="field">
+          <label class="field-label">Invoice Received</label>
+          <select id="exp-invoice">
+            <option value="FALSE">No</option>
+            <option value="TRUE">Yes</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Invoice Date</label>
+          <input type="date" id="exp-invoice-date">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label class="field-label">Admin Notes</label>
+        <textarea id="exp-notes" rows="2" placeholder="Internal notes…"></textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">Status</label>
+        <select id="exp-status">
+          <option value="Pending">Pending</option>
+          <option value="Reconciled">Reconciled</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('expense-modal')">Cancel</button>
+      <button class="btn btn-danger" id="exp-delete-btn" style="display:none" onclick="deleteCurrentExpense()">Delete</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- User modal -->
+<div class="modal-backdrop" id="user-modal">
+  <div class="modal">
+    <div class="modal-title">Add User</div>
+    <div class="form-row cols-2">
+      <div class="field">
+        <label class="field-label">Full Name</label>
+        <input type="text" id="user-name" placeholder="Jane Smith">
+      </div>
+      <div class="field">
+        <label class="field-label">PIN (numbers)</label>
+        <input type="text" id="user-pin" placeholder="e.g. 1234" maxlength="8">
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field">
+        <label class="field-label">Role</label>
+        <select id="user-role">
+          <option value="member">Member</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Budget Limit (USD/year)</label>
+        <input type="number" id="user-budget" placeholder="e.g. 5000" min="0">
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-top:4px">After adding, you can also edit users directly in the "users" tab of your Google Sheet.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Add User</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONFIGURATION — paste your Apps Script URL here after deploying
+// ══════════════════════════════════════════════════════════════
+const API_URL = https://script.google.com/macros/s/AKfycbxx_hBolMfS0NLR21UKw2GiO0UvTUUzInNyYdUhFaxzy5Nk3yoiocyasXr8KSrdcWxW-g/exec;
+
+// ── State ─────────────────────────────────────────────────────
+let currentUser = null;
+let allExpenses = [];
+let allUsers = [];
+let vendors = [];
+let categories = [];
+let editingExpenseId = null;
+let isAdminMode = false; // true when admin is adding on behalf of someone
+
+// ── API ───────────────────────────────────────────────────────
+async function api(params) {
+  const url = new URL(API_URL);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// ── Login ─────────────────────────────────────────────────────
+document.getElementById('login-pin').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('login-name').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+async function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const pin  = document.getElementById('login-pin').value.trim();
+  if (!name || !pin) { setLoginErr('Please enter your name and PIN.'); return; }
+  try {
+    setLoginErr('Signing in…');
+    const data = await api({ action:'login', name, pin });
+    currentUser = data.user;
+    await initApp();
+  } catch(e) {
+    setLoginErr(e.message || 'Sign-in failed.');
+  }
+}
+
+function setLoginErr(msg) {
+  document.getElementById('login-err').textContent = msg;
+}
+
+async function initApp() {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('user-chip').textContent = currentUser.name;
+  if (currentUser.role === 'admin') {
+    document.getElementById('admin-badge').style.display = 'inline';
+    // Add admin nav items
+    const nav = document.getElementById('main-nav');
+    nav.innerHTML = `
+      <button class="nav-btn active" onclick="showView('admin-overview')">Overview</button>
+      <button class="nav-btn" onclick="showView('admin-expenses')">All Expenses</button>
+      <button class="nav-btn" onclick="showView('my-expenses')">My Expenses</button>
+      <button class="nav-btn" onclick="showView('my-reports')">Reports</button>
+      <button class="nav-btn" onclick="showView('admin-settings')">Settings</button>
+    `;
+    showView('admin-overview');
+  } else {
+    showView('my-expenses');
+  }
+
+  // Populate year filters
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for(let y = currentYear; y >= currentYear-4; y--) years.push(y);
+  ['my-year-filter','rep-year-filter','adm-year-filter','ov-year-filter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    years.forEach(y => { const o = document.createElement('option'); o.value=y; o.textContent=y; el.appendChild(o); });
+  });
+
+  // Load reference data
+  const [vData, cData] = await Promise.all([api({action:'getVendors'}), api({action:'getCategories'})]);
+  vendors = vData.vendors;
+  categories = cData.categories;
+
+  if (currentUser.role === 'admin') {
+    const uData = await api({action:'getUsers', role:'admin', person_id: currentUser.id});
+    allUsers = uData.users.filter(u => u.id !== 'lab_mice' && u.active !== 'FALSE' && u.active !== false);
+    loadOverview();
+    loadSettings();
+  } else {
+    loadMyExpenses();
+  }
+}
+
+// ── View routing ──────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  event && event.target && event.target.classList.add('active');
+
+  if (name==='my-expenses') loadMyExpenses();
+  if (name==='my-reports')  loadMyReport();
+  if (name==='admin-expenses') loadAdminExpenses();
+  if (name==='admin-overview') loadOverview();
+  if (name==='admin-settings') loadSettings();
+}
+
+// ── My Expenses ───────────────────────────────────────────────
+async function loadMyExpenses() {
+  const year  = document.getElementById('my-year-filter').value;
+  const month = document.getElementById('my-month-filter').value;
+  const params = { action:'getExpenses', role: currentUser.role, person_id: currentUser.id, year };
+  if (month) params.month = month;
+  const data = await api(params);
+  const expenses = data.expenses.filter(e => e.person_id === currentUser.id);
+  renderMyTable(expenses);
+  renderMyStats(expenses);
+}
+
+function renderMyStats(expenses) {
+  const total = expenses.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+  const reconciled = expenses.filter(e => e.invoice_received==='TRUE'||e.invoice_received===true)
+                              .reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+  const limit = parseFloat(currentUser.budget_limit) || 0;
+  const pct = limit ? Math.min(100, (total/limit)*100) : 0;
+  const barClass = pct > 90 ? 'warn' : pct > 75 ? 'amber' : '';
+
+  document.getElementById('my-stats').innerHTML = `
+    <div class="stat">
+      <div class="stat-label">Total Spent</div>
+      <div class="stat-value ${pct>90?'warn':''}">${fmt(total)}</div>
+      ${limit ? `<div class="budget-bar-wrap"><div class="budget-bar-track"><div class="budget-bar-fill ${barClass}" style="width:${pct}%"></div></div></div>
+      <div class="stat-sub">of ${fmt(limit)} annual limit (${pct.toFixed(0)}%)</div>` : '<div class="stat-sub">No budget limit set</div>'}
+    </div>
+    <div class="stat">
+      <div class="stat-label">Reconciled</div>
+      <div class="stat-value ok">${fmt(reconciled)}</div>
+      <div class="stat-sub">${expenses.filter(e=>e.invoice_received==='TRUE'||e.invoice_received===true).length} invoices received</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value">${fmt(total - reconciled)}</div>
+      <div class="stat-sub">${expenses.filter(e=>e.status==='Pending').length} items awaiting invoice</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Entries</div>
+      <div class="stat-value">${expenses.length}</div>
+      <div class="stat-sub">expense records</div>
+    </div>
+  `;
+}
+
+function renderMyTable(expenses) {
+  const tbody = document.getElementById('my-tbody');
+  if (!expenses.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div><p>No expenses yet. Click "Add Expense" to get started.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = expenses.sort((a,b)=>b.date_purchased.localeCompare(a.date_purchased)).map(e => `
+    <tr>
+      <td class="mono">${e.date_purchased||'—'}</td>
+      <td>${esc(e.description)}</td>
+      <td>${esc(e.vendor)}</td>
+      <td>${esc(e.category)}</td>
+      <td class="mono"><strong>${fmt(e.amount)}</strong></td>
+      <td><span class="pill pill-${(e.status||'pending').toLowerCase()}">${e.status||'Pending'}</span></td>
+      <td><button class="btn-icon" onclick="openExpenseModal('${e.id}')">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.5 1.5L11.5 3.5L4 11H2V9L9.5 1.5Z"/></svg>
+      </button></td>
+    </tr>
+  `).join('');
+}
+
+// ── Admin: All Expenses ───────────────────────────────────────
+async function loadAdminExpenses() {
+  const year   = document.getElementById('adm-year-filter').value;
+  const month  = document.getElementById('adm-month-filter').value;
+  const person = document.getElementById('adm-person-filter').value;
+  const status = document.getElementById('adm-status-filter').value;
+
+  // Populate person filter
+  const pf = document.getElementById('adm-person-filter');
+  if (pf.options.length <= 1) {
+    allUsers.forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.id; o.textContent = u.name; pf.appendChild(o);
+    });
+    // Add Lab Mice
+    const o = document.createElement('option');
+    o.value = 'lab_mice'; o.textContent = 'Lab Mice'; pf.appendChild(o);
+  }
+
+  const params = { action:'getExpenses', role:'admin', person_id: currentUser.id, year };
+  if (month) params.month = month;
+  const data = await api(params);
+  let expenses = data.expenses;
+  if (person) expenses = expenses.filter(e => e.person_id === person);
+  if (status) expenses = expenses.filter(e => e.status === status);
+  allExpenses = expenses;
+  renderAdminTable(expenses);
+}
+
+function renderAdminTable(expenses) {
+  const userMap = {};
+  allUsers.forEach(u => userMap[u.id] = u.name);
+  userMap['lab_mice'] = 'Lab Mice';
+
+  const tbody = document.getElementById('adm-tbody');
+  if (!expenses.length) {
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty"><div class="empty-icon">📋</div><p>No expenses match the current filters.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = expenses.sort((a,b)=>b.date_purchased.localeCompare(a.date_purchased)).map(e => `
+    <tr>
+      <td class="mono">${e.date_purchased||'—'}</td>
+      <td><strong>${userMap[e.person_id]||e.person_id}</strong></td>
+      <td>${esc(e.description)}</td>
+      <td>${esc(e.vendor)}</td>
+      <td>${esc(e.category)}</td>
+      <td class="mono"><strong>${fmt(e.amount)}</strong></td>
+      <td class="check-cell">
+        <input type="checkbox" ${(e.invoice_received==='TRUE'||e.invoice_received===true)?'checked':''}
+          onchange="quickUpdate('${e.id}', 'invoice_received', this.checked?'TRUE':'FALSE')">
+      </td>
+      <td class="mono">${e.invoice_date||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${esc(e.admin_notes)}">${esc(e.admin_notes)||'—'}</td>
+      <td><span class="pill pill-${(e.status||'pending').toLowerCase()}">${e.status||'Pending'}</span></td>
+      <td><button class="btn-icon" onclick="openExpenseModal('${e.id}')">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.5 1.5L11.5 3.5L4 11H2V9L9.5 1.5Z"/></svg>
+      </button></td>
+    </tr>
+  `).join('');
+}
+
+async function quickUpdate(id, field, value) {
+  try {
+    await api({ action:'updateExpense', id, [field]: value });
+    toast('Updated');
+    // Auto-set status to Reconciled when invoice checked
+    if (field === 'invoice_received' && value === 'TRUE') {
+      await api({ action:'updateExpense', id, status:'Reconciled' });
+    }
+    if (field === 'invoice_received' && value === 'FALSE') {
+      await api({ action:'updateExpense', id, status:'Pending' });
+    }
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+// ── Admin: Overview ───────────────────────────────────────────
+async function loadOverview() {
+  const year  = document.getElementById('ov-year-filter').value;
+  const month = document.getElementById('ov-month-filter').value;
+
+  const data = await api({ action:'getExpenses', role:'admin', person_id: currentUser.id, year });
+  let expenses = data.expenses;
+  if (month) expenses = expenses.filter(e => (e.date_purchased||'').slice(5,7) === month);
+
+  const userMap = {};
+  allUsers.forEach(u => userMap[u.id] = u);
+  userMap['lab_mice'] = { id:'lab_mice', name:'Lab Mice', budget_limit:0 };
+
+  // Aggregate per person
+  const perPerson = {};
+  expenses.forEach(e => {
+    if (!perPerson[e.person_id]) perPerson[e.person_id] = { spent:0, reconciled:0, count:0 };
+    perPerson[e.person_id].spent      += parseFloat(e.amount)||0;
+    perPerson[e.person_id].count++;
+    if (e.invoice_received==='TRUE'||e.invoice_received===true)
+      perPerson[e.person_id].reconciled += parseFloat(e.amount)||0;
+  });
+
+  const totalSpent = Object.values(perPerson).reduce((s,v)=>s+v.spent,0);
+  const totalReconciled = Object.values(perPerson).reduce((s,v)=>s+v.reconciled,0);
+  const pendingCount = expenses.filter(e=>e.status==='Pending').length;
+
+  document.getElementById('ov-stats').innerHTML = `
+    <div class="stat"><div class="stat-label">Lab Total Spent</div><div class="stat-value">${fmt(totalSpent)}</div><div class="stat-sub">${expenses.length} expenses</div></div>
+    <div class="stat"><div class="stat-label">Reconciled</div><div class="stat-value ok">${fmt(totalReconciled)}</div><div class="stat-sub">${((totalReconciled/totalSpent||0)*100).toFixed(0)}% of total</div></div>
+    <div class="stat"><div class="stat-label">Pending Invoices</div><div class="stat-value ${pendingCount?'warn':''}">${pendingCount}</div><div class="stat-sub">awaiting reconciliation</div></div>
+    <div class="stat"><div class="stat-label">Active Members</div><div class="stat-value">${allUsers.length}</div><div class="stat-sub">tracked individuals</div></div>
+  `;
+
+  const peopleHTML = allUsers.concat([{id:'lab_mice',name:'Lab Mice',budget_limit:0}]).map(u => {
+    const s = perPerson[u.id] || {spent:0,reconciled:0,count:0};
+    const limit = parseFloat(u.budget_limit)||0;
+    const pct = limit ? Math.min(100,(s.spent/limit)*100) : 0;
+    const barClass = pct>90?'warn':pct>75?'amber':'';
+    return `<div class="person-card" onclick="showPersonDetail('${u.id}', ${JSON.stringify(expenses.filter(e=>e.person_id===u.id))})">
+      <div class="person-name">${esc(u.name)}</div>
+      <div style="font-size:20px;font-weight:600;margin-bottom:6px">${fmt(s.spent)}</div>
+      ${limit ? `<div class="budget-bar-wrap"><div class="budget-bar-track"><div class="budget-bar-fill ${barClass}" style="width:${pct}%"></div></div></div>` : ''}
+      <div class="person-meta">${s.count} expenses · ${fmt(s.reconciled)} reconciled${limit?' · limit '+fmt(limit):''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('ov-people').innerHTML = peopleHTML;
+}
+
+function showPersonDetail(personId, expenses) {
+  const user = allUsers.find(u=>u.id===personId) || {name:'Lab Mice'};
+  document.getElementById('ov-detail-name').textContent = user.name + ' — Expense Detail';
+  document.getElementById('ov-detail').style.display = 'block';
+  const tbody = document.getElementById('ov-detail-tbody');
+  tbody.innerHTML = expenses.sort((a,b)=>b.date_purchased.localeCompare(a.date_purchased)).map(e=>`
+    <tr>
+      <td class="mono">${e.date_purchased||'—'}</td>
+      <td>${esc(e.description)}</td>
+      <td>${esc(e.vendor)}</td>
+      <td>${esc(e.category)}</td>
+      <td class="mono"><strong>${fmt(e.amount)}</strong></td>
+      <td><span class="pill pill-${(e.status||'pending').toLowerCase()}">${e.status||'Pending'}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ── My Reports ────────────────────────────────────────────────
+async function loadMyReport() {
+  const year = document.getElementById('rep-year-filter').value;
+  const data = await api({ action:'getExpenses', role: currentUser.role, person_id: currentUser.id, year });
+  const expenses = data.expenses.filter(e => e.person_id === currentUser.id);
+
+  const total = expenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  const reconciled = expenses.filter(e=>e.invoice_received==='TRUE'||e.invoice_received===true)
+                              .reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  const limit = parseFloat(currentUser.budget_limit)||0;
+
+  document.getElementById('rep-stats').innerHTML = `
+    <div class="stat"><div class="stat-label">Annual Total</div><div class="stat-value">${fmt(total)}</div>${limit?`<div class="stat-sub">${fmt(limit-total)} remaining of ${fmt(limit)}</div>`:''}</div>
+    <div class="stat"><div class="stat-label">Reconciled</div><div class="stat-value ok">${fmt(reconciled)}</div></div>
+    <div class="stat"><div class="stat-label">Expenses</div><div class="stat-value">${expenses.length}</div></div>
+  `;
+
+  // By category
+  const byCat = {};
+  expenses.forEach(e => { const c = e.category||'Uncategorized'; byCat[c]=(byCat[c]||0)+(parseFloat(e.amount)||0); });
+  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('rep-by-category').innerHTML = catEntries.length ? catEntries.map(([cat,amt])=>{
+    const pct = total ? (amt/total*100).toFixed(1) : 0;
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="width:130px;font-size:13px;flex-shrink:0">${esc(cat)}</div>
+      <div style="flex:1;background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+        <div style="width:${pct}%;background:var(--accent);height:100%;border-radius:3px"></div>
+      </div>
+      <div class="mono" style="font-size:13px;width:80px;text-align:right">${fmt(amt)}</div>
+      <div style="font-size:11px;color:var(--text2);width:36px;text-align:right">${pct}%</div>
+    </div>`;
+  }).join('') : '<p style="color:var(--text2);font-size:13px">No data</p>';
+
+  // By month
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const byMonth = {};
+  expenses.forEach(e => {
+    const m = (e.date_purchased||'').slice(5,7);
+    if(m) byMonth[m] = (byMonth[m]||0)+(parseFloat(e.amount)||0);
+  });
+  const maxMonth = Math.max(...Object.values(byMonth),1);
+  document.getElementById('rep-by-month').innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end;height:80px">` +
+    Array.from({length:12},(_,i)=>{
+      const m = String(i+1).padStart(2,'0');
+      const amt = byMonth[m]||0;
+      const h = (amt/maxMonth*70).toFixed(0);
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+        <div style="width:100%;background:var(--accent);border-radius:3px 3px 0 0;height:${h}px" title="${fmt(amt)}"></div>
+        <div style="font-size:10px;color:var(--text2)">${months[i]}</div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+// ── Expense Modal ─────────────────────────────────────────────
+function openExpenseModal(id, adminAdd) {
+  editingExpenseId = id || null;
+  isAdminMode = !!adminAdd;
+  const isAdmin = currentUser.role === 'admin';
+  const modal = document.getElementById('expense-modal');
+  const today = new Date().toISOString().slice(0,10);
+
+  document.getElementById('expense-modal-title').textContent = id ? 'Edit Expense' : 'Add Expense';
+  document.getElementById('exp-admin-section').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('exp-delete-btn').style.display = id ? 'inline-flex' : 'none';
+  document.getElementById('exp-person-field').style.display = (isAdmin && !id) ? 'flex' : 'none';
+
+  // Populate dropdowns
+  const vs = document.getElementById('exp-vendor');
+  vs.innerHTML = '<option value="">Select vendor…</option>' + vendors.map(v=>`<option>${esc(v)}</option>`).join('');
+  const cs = document.getElementById('exp-category');
+  cs.innerHTML = '<option value="">Select category…</option>' + categories.map(c=>`<option>${esc(c)}</option>`).join('');
+
+  // Person dropdown for admin
+  if (isAdmin) {
+    const ps = document.getElementById('exp-person');
+    ps.innerHTML = allUsers.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');
+    ps.innerHTML += '<option value="lab_mice">Lab Mice (Admin)</option>';
+  }
+
+  if (id) {
+    // Find expense
+    const e = allExpenses.find(x=>x.id===id) ||
+              (async()=>{ const d=await api({action:'getExpenses',role:currentUser.role,person_id:currentUser.id,year:new Date().getFullYear()}); return d.expenses.find(x=>x.id===id); })();
+    Promise.resolve(e).then(exp => {
+      if (!exp) return;
+      document.getElementById('exp-date').value = exp.date_purchased||today;
+      document.getElementById('exp-desc').value = exp.description||'';
+      document.getElementById('exp-vendor').value = exp.vendor||'';
+      document.getElementById('exp-category').value = exp.category||'';
+      document.getElementById('exp-amount').value = exp.amount||'';
+      if (isAdmin) {
+        document.getElementById('exp-invoice').value = (exp.invoice_received==='TRUE'||exp.invoice_received===true)?'TRUE':'FALSE';
+        document.getElementById('exp-invoice-date').value = exp.invoice_date||'';
+        document.getElementById('exp-notes').value = exp.admin_notes||'';
+        document.getElementById('exp-status').value = exp.status||'Pending';
+      }
+    });
+  } else {
+    document.getElementById('exp-date').value = today;
+    document.getElementById('exp-desc').value = '';
+    document.getElementById('exp-vendor').value = '';
+    document.getElementById('exp-category').value = '';
+    document.getElementById('exp-amount').value = '';
+    if (isAdmin) {
+      document.getElementById('exp-invoice').value = 'FALSE';
+      document.getElementById('exp-invoice-date').value = '';
+      document.getElementById('exp-notes').value = '';
+      document.getElementById('exp-status').value = 'Pending';
+    }
+  }
+
+  modal.classList.add('open');
+}
+
+async function saveExpense() {
+  const isAdmin = currentUser.role === 'admin';
+  const params = {
+    date_purchased: document.getElementById('exp-date').value,
+    description:    document.getElementById('exp-desc').value,
+    vendor:         document.getElementById('exp-vendor').value,
+    category:       document.getElementById('exp-category').value,
+    amount:         document.getElementById('exp-amount').value,
+  };
+  if (!params.description || !params.amount) { toast('Please fill in description and amount.'); return; }
+
+  if (isAdmin) {
+    params.invoice_received = document.getElementById('exp-invoice').value;
+    params.invoice_date     = document.getElementById('exp-invoice-date').value;
+    params.admin_notes      = document.getElementById('exp-notes').value;
+    params.status           = document.getElementById('exp-status').value;
+  }
+
+  try {
+    if (editingExpenseId) {
+      await api({ action:'updateExpense', id: editingExpenseId, ...params });
+      toast('Expense updated');
+    } else {
+      const person_id = (isAdmin && document.getElementById('exp-person-field').style.display !== 'none')
+        ? document.getElementById('exp-person').value
+        : currentUser.id;
+      await api({ action:'addExpense', person_id, ...params });
+      toast('Expense added');
+    }
+    closeModal('expense-modal');
+    refreshCurrentView();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function deleteCurrentExpense() {
+  if (!editingExpenseId) return;
+  if (!confirm('Delete this expense? This cannot be undone.')) return;
+  try {
+    await api({ action:'deleteExpense', id: editingExpenseId });
+    toast('Expense deleted');
+    closeModal('expense-modal');
+    refreshCurrentView();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function refreshCurrentView() {
+  const active = document.querySelector('.view.active');
+  if (!active) return;
+  const id = active.id.replace('view-','');
+  if (id==='my-expenses') loadMyExpenses();
+  else if (id==='my-reports') loadMyReport();
+  else if (id==='admin-expenses') loadAdminExpenses();
+  else if (id==='admin-overview') loadOverview();
+}
+
+// ── Settings ──────────────────────────────────────────────────
+async function loadSettings() {
+  // Users
+  const ul = document.getElementById('users-list');
+  ul.innerHTML = allUsers.map(u=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:500">${esc(u.name)}</div>
+        <div style="font-size:12px;color:var(--text2)">${u.role} · limit: ${u.budget_limit?fmt(u.budget_limit):'none'}</div>
+      </div>
+      <span class="pill ${u.active===false||u.active==='FALSE'?'pill-admin':'pill-reconciled'}">${u.active===false||u.active==='FALSE'?'inactive':'active'}</span>
+    </div>
+  `).join('');
+
+  // Vendors
+  document.getElementById('vendors-list').innerHTML = vendors.map(v=>`
+    <span class="pill pill-admin">${esc(v)}</span>`).join('');
+
+  // Categories
+  document.getElementById('categories-list').innerHTML = categories.map(c=>`
+    <span class="pill pill-admin">${esc(c)}</span>`).join('');
+}
+
+function openUserModal() { document.getElementById('user-modal').classList.add('open'); }
+
+async function saveUser() {
+  const name   = document.getElementById('user-name').value.trim();
+  const pin    = document.getElementById('user-pin').value.trim();
+  const role   = document.getElementById('user-role').value;
+  const budget = document.getElementById('user-budget').value;
+  if (!name || !pin) { toast('Name and PIN are required.'); return; }
+
+  // We write directly to the sheet via a special addUser action... 
+  // For now, inform the user to add via the sheet (Apps Script handles users in setup)
+  // In production you'd add an addUser action to the script.
+  toast('Add "' + name + '" to the users tab in your Google Sheet with PIN: ' + pin + ', role: ' + role + ', budget_limit: ' + (budget||0) + ', active: TRUE');
+  closeModal('user-modal');
+}
+
+async function openAddVendor() {
+  const name = prompt('New vendor name:');
+  if (!name) return;
+  await api({ action:'addVendor', name });
+  const vData = await api({ action:'getVendors' });
+  vendors = vData.vendors;
+  loadSettings();
+  toast('Vendor added: ' + name);
+}
+
+async function openAddCategory() {
+  const name = prompt('New category name:');
+  if (!name) return;
+  await api({ action:'addCategory', name });
+  const cData = await api({ action:'getCategories' });
+  categories = cData.categories;
+  loadSettings();
+  toast('Category added: ' + name);
+}
+
+// ── CSV Export ────────────────────────────────────────────────
+function toCSV(rows, headers) {
+  return [headers.join(','), ...rows.map(r => headers.map(h => '"'+(r[h]||'').toString().replace(/"/g,'""')+'"').join(','))].join('\n');
+}
+
+async function exportMyCSV() {
+  const year = document.getElementById('rep-year-filter').value;
+  const data = await api({ action:'getExpenses', role:currentUser.role, person_id:currentUser.id, year });
+  const expenses = data.expenses.filter(e=>e.person_id===currentUser.id);
+  downloadCSV(toCSV(expenses, ['date_purchased','description','vendor','category','amount','status']), `my_expenses_${year}.csv`);
+}
+
+async function exportAdminCSV() {
+  downloadCSV(toCSV(allExpenses, ['date_purchased','person_id','description','vendor','category','amount','invoice_received','invoice_date','admin_notes','status']), `all_expenses.csv`);
+}
+
+async function exportOverviewCSV() {
+  const year = document.getElementById('ov-year-filter').value;
+  const data = await api({ action:'getExpenses', role:'admin', person_id:currentUser.id, year });
+  downloadCSV(toCSV(data.expenses, ['date_purchased','person_id','description','vendor','category','amount','invoice_received','invoice_date','admin_notes','status']), `lab_expenses_${year}.csv`);
+}
+
+function downloadCSV(csv, filename) {
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = filename;
+  a.click();
+}
+
+// ── Utilities ─────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function fmt(n) { return '$' + (parseFloat(n)||0).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function signOut() { currentUser=null; document.getElementById('app').style.display='none'; document.getElementById('login-view').style.display='flex'; document.getElementById('login-err').textContent=''; document.getElementById('login-name').value=''; document.getElementById('login-pin').value=''; }
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2800);
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-backdrop').forEach(b => {
+  b.addEventListener('click', e => { if(e.target===b) b.classList.remove('open'); });
+});
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.modal-backdrop.open').forEach(b=>b.classList.remove('open')); });
+</script>
+</body>
+</html>
